@@ -5,6 +5,7 @@ import (
 )
 
 var (
+	ErrUnauthorized      = errors.New("unauthorized")
 	ErrNotFound          = errors.New("Not Found")
 	ErrNoRows            = errors.New("No Rows")
 	ErrNicknameDuplicate = errors.New("nickname duplicate")

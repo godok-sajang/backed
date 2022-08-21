@@ -1,9 +1,9 @@
 package util
 
 import (
-	"net/mail"
 	"strings"
-	"unicode"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 func Contain(s string, strArray []string) bool {
@@ -15,25 +15,12 @@ func Contain(s string, strArray []string) bool {
 	return false
 }
 
-func ValidateEmail(email string) bool {
-	_, err := mail.ParseAddress(email)
-	return err == nil
+func HashPassword(password string) string {
+	bytes, _ := bcrypt.GenerateFromPassword([]byte(password), 14)
+	return string(bytes)
 }
 
-func ValidatePassword(password string) bool {
-	if len(password) < 8 || len(password) > 50 {
-		return false
-	}
-	var number, letter, special bool
-	for _, c := range password {
-		switch {
-		case unicode.IsNumber(c):
-			number = true
-		case unicode.IsPunct(c) || unicode.IsSymbol(c) || c == ' ':
-			special = true
-		case unicode.IsLetter(c):
-			letter = true
-		}
-	}
-	return (number && letter) || (number && special) || (letter && special)
+func CheckPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
 }

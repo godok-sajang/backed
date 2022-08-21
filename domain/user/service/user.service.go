@@ -5,10 +5,9 @@ import (
 	"database/sql"
 	"echo_sample/domain/user/dto"
 	userdto "echo_sample/domain/user/dto"
+	e "echo_sample/error"
 	"echo_sample/middleware"
-	"time"
 
-	"github.com/golang-jwt/jwt"
 	"github.com/pkg/errors"
 )
 
@@ -22,7 +21,7 @@ func (receiver *UserService) GetUserInfo(ctx context.Context, userId int) (user 
 	return user, nil
 }
 
-func (receiver *UserService) CreateUserInfo(c context.Context, req dto.UserInfo) (ret dto.UserTokens, err error) {
+func (receiver *UserService) CreateUserInfo(c context.Context, req dto.UserInfoRequest) (ret dto.UserTokens, err error) {
 
 	existNickname, err := dao.CheckNickname(c, req.Nickname)
 	if err != nil && err != sql.ErrNoRows {
@@ -43,9 +42,8 @@ func (receiver *UserService) CreateUserInfo(c context.Context, req dto.UserInfo)
 		return
 	}
 
-	userInfo, err := dao.CreateUserInfo(c, req)
+	userInfo, err := dao.CreateUserInfo(c, req.ToDtoUserInfo())
 	if err != nil {
-
 		return
 	}
 	accessToken, err := middleware.CreateToken(int64(userInfo.UserID), middleware.TokenValidationMinutes)
@@ -69,30 +67,30 @@ func (receiver *UserService) CreateUserInfo(c context.Context, req dto.UserInfo)
 	return
 }
 
-func (receiver *UserService) SignIn(ctx context.Context, req dto.UserVerified) (tokenString string, err error) {
-	userId, err := dao.CheckAuth(ctx, req)
+func (receiver *UserService) SignIn(ctx context.Context, req dto.UserSignInRequest) (dto.UserTokens, error) {
+	userInfo, err := dao.CheckAuth(ctx, req)
 	if err != nil {
-		errors.Wrap(err, "SignIn failed")
+		errors.Wrap(err, "CheckAuth failed")
 	}
 
-	// Set custom claims
-	claims := &userdto.JwtCustomClaims{
-		UserId: userId,
-		Admin:  false,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(time.Hour * 72).Unix(),
+	if userInfo.UserID == 0 {
+		return dto.UserTokens{}, e.ErrUnauthorized
+	}
+
+	accessToken, err := middleware.CreateToken(int64(userInfo.UserID), middleware.TokenValidationMinutes)
+	refreshToken, err := middleware.CreateToken(int64(userInfo.UserID), middleware.RefreshValidationMinutes)
+
+	ret := dto.UserTokens{
+		Success:      true,
+		UserID:       sql.NullInt64{Int64: int64(userInfo.UserID), Valid: true},
+		AccessToken:  sql.NullString{String: accessToken, Valid: accessToken != ""},
+		RefreshToken: sql.NullString{String: refreshToken, Valid: refreshToken != ""},
+		ExistUserInfo: userdto.ExistUser{
+			UserID:   userInfo.UserID,
+			Nickname: userInfo.Nickname,
+			Email:    userInfo.Email,
 		},
 	}
 
-	// Create token with claims
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	// Generate encoded token
-	tokenString, err = token.SignedString([]byte("secret"))
-	if err != nil {
-		err = errors.Wrap(err, "SignedString")
-		return
-	}
-
-	return tokenString, nil
+	return ret, nil
 }

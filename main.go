@@ -30,8 +30,8 @@ func InitWebServices() {
 	// Echo instance
 	e := echo.New()
 
-	//JWT Authorization
-	// e.Use(middleware.JWT([]byte("secret")))
+	//JWT Authorization``
+	e.Use(middleware.JWT([]byte(config.Config("SECRET"))))
 
 	// Middleware
 	e.Use(middleware.Logger())

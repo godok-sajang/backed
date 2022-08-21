@@ -2,16 +2,12 @@ package router
 
 import (
 	"database/sql"
-	"fmt"
 	"net/http"
-	"os"
 	"strconv"
-	"time"
 
 	"echo_sample/domain/user/dto"
 	userdto "echo_sample/domain/user/dto"
 	user "echo_sample/domain/user/service"
-	"echo_sample/util"
 
 	"github.com/labstack/echo/v4"
 	"github.com/pkg/errors"
@@ -23,8 +19,8 @@ var (
 
 func MappingUrl(app *echo.Echo) {
 	app.GET("/user/info/:id", GetUserInfo)
-	app.POST("/user/info", UserSignUp)
-	app.POST("/user/signIn", UserSignIn)
+	app.POST("/user/sign-up", UserSignUp)
+	app.POST("/user/sign-in", UserSignIn)
 }
 
 func GetUserInfo(c echo.Context) error {
@@ -50,31 +46,24 @@ func UserSignUp(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, err)
 	}
 
-	if !(len(req.Nickname) >= 1 && len(req.Nickname) <= 15) {
-		fmt.Fprintln(os.Stderr, "["+time.Now().String()+"]"+"Nickname: ", req.Nickname)
+	if req.ValidateNickname() {
 		return c.JSON(http.StatusBadRequest, "invalid nickname")
 	}
-	if req.Email == nil || !util.ValidateEmail(*req.Email) {
+
+	if req.ValidateEmail() {
 		return c.JSON(http.StatusBadRequest, "invalid email")
 	}
-	if req.Password == nil || !util.ValidatePassword(*req.Password) {
+
+	if req.ValidatePassword() {
 		return c.JSON(http.StatusBadRequest, "invalid password")
 	}
-	var birth time.Time
-	birth, err = time.Parse(time.RFC3339, req.Birth)
-	if err != nil {
-		birth, err = time.Parse("2006-01-02", req.Birth)
+
+	if req.ValidateBirth() != nil {
+		return c.JSON(http.StatusBadRequest, "invalid Birth")
 	}
 
-	token, err := userService.CreateUserInfo(c.Request().Context(), dto.UserInfo{
-		Nickname: req.Nickname,
-		Email:    req.Email,
-		Password: req.Password,
-		Birth:    birth,
-		Gender:   req.Gender,
-	})
+	token, err := userService.CreateUserInfo(c.Request().Context(), req)
 	if err != nil {
-		fmt.Printf("%+v", err)
 		return c.JSON(http.StatusInternalServerError, err)
 	}
 
@@ -82,11 +71,11 @@ func UserSignUp(c echo.Context) error {
 }
 
 func UserSignIn(c echo.Context) (err error) {
-	u := new(userdto.UserVerified)
+	var u userdto.UserSignInRequest
 	if err = c.Bind(u); err != nil {
-		return c.JSON(http.StatusBadRequest, "bad request")
+		return c.JSON(http.StatusBadRequest, err.Error())
 	}
-	token, err := userService.SignIn(c.Request().Context(), userdto.UserVerified{
+	token, err := userService.SignIn(c.Request().Context(), userdto.UserSignInRequest{
 		Email:    u.Email,
 		Password: u.Password,
 	})
@@ -94,17 +83,4 @@ func UserSignIn(c echo.Context) (err error) {
 		return c.JSON(http.StatusUnauthorized, errors.Cause(err))
 	}
 	return c.JSON(http.StatusOK, token)
-}
-
-// 테스트용 API
-func MockData() echo.HandlerFunc {
-	return func(c echo.Context) error {
-		// Mock Data를 생성한다.
-		list := map[string]string{
-			"1": "고양이",
-			"2": "사자",
-			"3": "호랑이",
-		}
-		return c.JSON(http.StatusOK, list)
-	}
 }

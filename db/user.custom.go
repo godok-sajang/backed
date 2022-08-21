@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"echo_sample/domain/user/dto"
+	"echo_sample/util"
 	"errors"
 )
 
@@ -13,7 +14,7 @@ SELECT * FROM test_table where user_id = $1
 
 func (q *Queries) GetUserInfo(ctx context.Context, userId int) (user dto.UserInfo, err error) {
 	err = q.db.QueryRowContext(ctx, getUserInfoQuery, userId).Scan(
-		&user.UserId,
+		&user.UserID,
 		&user.Nickname,
 		&user.Email,
 		&user.Password,
@@ -29,10 +30,10 @@ INSERT INTO test_table(nickname, email, password, birth, gender) VALUES($1, $2, 
 RETURNING user_id, nickname, email
 `
 
-func (q *Queries) CreateUserInfo(ctx context.Context, req dto.UserInfo) (dto.ExistUser, error) {
+func (q *Queries) CreateUserInfo(ctx context.Context, req dto.UserInfo) (dto.UserInfo, error) {
 	var (
 		err      error
-		userInfo dto.ExistUser
+		userInfo dto.UserInfo
 	)
 	if err = q.db.QueryRowContext(ctx, createUserInfoQuery,
 		req.Nickname,
@@ -46,24 +47,36 @@ func (q *Queries) CreateUserInfo(ctx context.Context, req dto.UserInfo) (dto.Exi
 		&userInfo.Email,
 	); err != nil {
 		err = errors.New(err.Error())
-		return dto.ExistUser{}, err
+		return dto.UserInfo{}, err
 	}
 	return userInfo, nil
 }
 
 var checkAuthQuery = `
-	select user_id where email=$1, password=$2 limit1
+	select user_id, nickname, email from user_account where email=$1, password=$2 limit1
 `
 
-func (q *Queries) CheckAuth(ctx context.Context, req dto.UserVerified) (userId int, err error) {
-	if err = q.db.QueryRowContext(ctx, checkAuthQuery, req.Email, req.Password).Scan(&userId); err != nil {
-		return 0, errors.New(err.Error())
-	}
-	return
+type checkAuthResponse struct {
+	UserID   int    `json:"userId" bson:"user_id"`
+	Nickname string `json:"nickname" bson:"nickname"`
+	Email    string `json:"email" bson:"email"`
+}
+
+func (q *Queries) CheckAuth(ctx context.Context, req dto.UserSignInRequest) (checkAuthResponse, error) {
+	var ret checkAuthResponse
+	err := q.db.QueryRowContext(ctx, checkAuthQuery,
+		req.Email,
+		util.HashPassword(req.Password),
+	).Scan(
+		&ret.UserID,
+		&ret.Nickname,
+		&ret.Email,
+	)
+	return ret, errors.New(err.Error())
 }
 
 var checkNicknameQuery = `
-	select nickname from test_table where nickname=lower($1) limit 1
+	select nickname from user_account where nickname=lower($1) limit 1
 `
 
 func (q *Queries) CheckNickname(ctx context.Context, nickname string) (sql.NullString, error) {
