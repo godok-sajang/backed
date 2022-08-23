@@ -5,10 +5,11 @@ import (
 	"echo_sample/db"
 	"echo_sample/domain/user"
 	userService "echo_sample/domain/user/service"
+	"echo_sample/middleware"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	eMiddleware "github.com/labstack/echo/v4/middleware"
 )
 
 func main() {
@@ -31,15 +32,14 @@ func InitWebServices() {
 	e := echo.New()
 
 	//JWT Authorization``
-	e.Use(middleware.JWT([]byte(config.Config("SECRET"))))
+	e.Use(middleware.JWTAuth())
 
 	// Middleware
-	e.Use(middleware.Logger())
-	e.Use(middleware.Recover())
+	e.Use(eMiddleware.Logger())
+	e.Use(eMiddleware.Recover())
 
 	// Service init
 	user.Init(e)
-	e.GET("/ping", ping)
 
 	// Start server
 	e.Logger.Fatal(e.Start(":3000"))

@@ -2,6 +2,7 @@ package router
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -18,7 +19,6 @@ var (
 )
 
 func MappingUrl(app *echo.Echo) {
-	app.GET("/user/info/:id", GetUserInfo)
 	app.POST("/user/sign-up", UserSignUp)
 	app.POST("/user/sign-in", UserSignIn)
 }
@@ -46,15 +46,15 @@ func UserSignUp(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, err)
 	}
 
-	if req.ValidateNickname() {
+	if !req.ValidateNickname() {
 		return c.JSON(http.StatusBadRequest, "invalid nickname")
 	}
 
-	if req.ValidateEmail() {
+	if !req.ValidateEmail() {
 		return c.JSON(http.StatusBadRequest, "invalid email")
 	}
 
-	if req.ValidatePassword() {
+	if !req.ValidatePassword() {
 		return c.JSON(http.StatusBadRequest, "invalid password")
 	}
 
@@ -64,6 +64,7 @@ func UserSignUp(c echo.Context) error {
 
 	token, err := userService.CreateUserInfo(c.Request().Context(), req)
 	if err != nil {
+		fmt.Printf("%+v", err)
 		return c.JSON(http.StatusInternalServerError, err)
 	}
 

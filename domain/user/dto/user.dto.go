@@ -3,6 +3,7 @@ package dto
 import (
 	"database/sql"
 	"echo_sample/util"
+	"fmt"
 	"net/mail"
 	"time"
 	"unicode"
@@ -11,17 +12,18 @@ import (
 )
 
 type UserInfoRequest struct {
-	Nickname string `json:"nickname"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	Birth    string `json:"birth"`
-	Gender   int    `json:"gender"`
+	Nickname string `json:"nickname" form:"nickname"`
+	Email    string `json:"email" form:"email"`
+	Password string `json:"password" form:"password"`
+	Birth    string `json:"birth" form:"birth"`
+	Gender   int    `json:"gender" form:"gender"`
 }
 
 func (uir UserInfoRequest) ValidateNickname() bool {
 	if !(len(uir.Nickname) >= 3 && len(uir.Nickname) <= 15) {
 		return false
 	}
+	fmt.Println("check")
 	return true
 }
 
