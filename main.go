@@ -41,7 +41,7 @@ func InitWebServices() {
 	// Service init
 	user.Init(e)
 
-	// Start server
+	// Start server 
 	e.Logger.Fatal(e.Start(":3000"))
 }
 
