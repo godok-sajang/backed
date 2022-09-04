@@ -3,8 +3,8 @@ package db
 import (
 	"context"
 	"database/sql"
-	"echo_sample/config"
 	"fmt"
+	"godok/config"
 	"log"
 
 	_ "github.com/lib/pq"

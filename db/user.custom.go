@@ -2,27 +2,29 @@ package db
 
 import (
 	"context"
-	"database/sql"
-	"echo_sample/domain/user/dto"
-	"echo_sample/util"
 	"errors"
+	"godok/domain/user/dto"
+	"godok/util"
+
+	eu "godok/util/errorutil"
 )
 
 var getUserInfoQuery = `
 SELECT * FROM test_table where user_id = $1
 `
 
-func (q *Queries) GetUserInfo(ctx context.Context, userId int) (user dto.UserInfo, err error) {
-	err = q.db.QueryRowContext(ctx, getUserInfoQuery, userId).Scan(
+func (q *Queries) GetUserInfo(ctx context.Context, userId int) (dto.UserInfo, error) {
+	var user dto.UserInfo
+
+	if err := q.db.QueryRowContext(ctx, getUserInfoQuery, userId).Scan(
 		&user.UserID,
 		&user.Nickname,
 		&user.Email,
 		&user.Password,
-		&user.Birth)
-	if err != nil {
-		return
+		&user.Birth); err != nil {
+		return user, eu.InternalError(err)
 	}
-	return
+	return user, nil
 }
 
 var createUserInfoQuery = `
@@ -64,39 +66,80 @@ type checkAuthResponse struct {
 
 func (q *Queries) CheckAuth(ctx context.Context, req dto.UserSignInRequest) (checkAuthResponse, error) {
 	var ret checkAuthResponse
-	err := q.db.QueryRowContext(ctx, checkAuthQuery,
+	if err := q.db.QueryRowContext(ctx, checkAuthQuery,
 		req.Email,
 		util.HashPassword(req.Password),
 	).Scan(
 		&ret.UserID,
 		&ret.Nickname,
 		&ret.Email,
-	)
-	return ret, errors.New(err.Error())
+	); err != nil {
+		return ret, eu.InternalError(err)
+	}
+	return ret, nil
 }
 
 var checkNicknameQuery = `
 	select nickname from user_account where nickname=lower($1) limit 1
 `
 
-func (q *Queries) CheckNickname(ctx context.Context, nickname string) (sql.NullString, error) {
+func (q *Queries) CheckNickname(ctx context.Context, nickname string) ([]string, error) {
 	var (
-		ret sql.NullString
+		ret []string
 		err error
 	)
-	err = q.db.QueryRowContext(ctx, checkNicknameQuery, nickname).Scan(&ret)
-	return ret, err
+	rows, err := q.db.QueryContext(ctx, checkNicknameQuery, nickname)
+	if err != nil {
+		return nil, eu.InternalError(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var row string
+		if err := rows.Scan(
+			&row,
+		); err != nil {
+			return nil, eu.InternalError(err)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, eu.InternalError(err)
+	}
+	return ret, nil
 }
 
-var checkEmailQuery = `
-	select email from test_table where email=lower($1) limit 1
+var getUserInfoByRequestQuery = `
+	select * from user_account where true and %v %v %v limit 1 
 `
 
-func (q *Queries) CheckEmail(ctx context.Context, email string) (sql.NullString, error) {
-	var (
-		ret sql.NullString
-		err error
+func (q *Queries) GetUserInfoByRequest(c context.Context, req dto.UserInfoRequest) ([]dto.UserInfo, error) {
+	var ret []dto.UserInfo
+	rows, err := q.db.QueryContext(c, getUserInfoByRequestQuery,
+		req.GetQueryByNickname(),
+		req.GetQueryByEmail(),
+		req.GetQueryByPassword(),
 	)
-	err = q.db.QueryRowContext(ctx, checkEmailQuery, email).Scan(&ret)
-	return ret, err
+	if err != nil {
+		return nil, eu.InternalError(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var row dto.UserInfo
+		if err := rows.Scan(
+			&row.UserID,
+			&row.Nickname,
+			&row.Email,
+			&row.Password,
+			&row.Birth,
+			&row.Gender,
+		); err != nil {
+			return nil, eu.InternalError(err)
+		}
+		ret = append(ret, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, eu.InternalError(err)
+	}
+	return ret, nil
+
 }

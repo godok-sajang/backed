@@ -2,8 +2,8 @@ package dto
 
 import (
 	"database/sql"
-	"echo_sample/util"
 	"fmt"
+	"godok/util"
 	"net/mail"
 	"time"
 	"unicode"
@@ -12,11 +12,42 @@ import (
 )
 
 type UserInfoRequest struct {
+	ID       int
 	Nickname string `json:"nickname" form:"nickname"`
 	Email    string `json:"email" form:"email"`
 	Password string `json:"password" form:"password"`
 	Birth    string `json:"birth" form:"birth"`
 	Gender   int    `json:"gender" form:"gender"`
+}
+
+func (uir UserInfoRequest) GetQueryByNickname() string {
+	query := ""
+
+	if uir.Nickname != "" {
+		query += fmt.Sprintf("and nickname=%v", uir.Nickname)
+	}
+
+	return query
+}
+
+func (uir UserInfoRequest) GetQueryByEmail() string {
+	query := ""
+
+	if uir.Email != "" {
+		query += fmt.Sprintf("and email='%v'", uir.Email)
+	}
+
+	return query
+}
+
+func (uir UserInfoRequest) GetQueryByPassword() string {
+	query := ""
+
+	if uir.Password != "" {
+		query += fmt.Sprintf("and password='%v'", uir.Password)
+	}
+
+	return query
 }
 
 func (uir UserInfoRequest) ValidateNickname() bool {
@@ -106,7 +137,7 @@ type UserTokens struct {
 }
 
 type ExistUser struct {
-	UserID   int    `json:"userID"`
+	UserID   int64  `json:"userID"`
 	Nickname string `json:"nickname"`
 	Email    string `json:"email"`
 }

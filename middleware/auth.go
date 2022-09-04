@@ -1,9 +1,9 @@
 package middleware
 
 import (
-	"echo_sample/config"
 	"encoding/base64"
 	"fmt"
+	"godok/config"
 	"net/http"
 	"os"
 	"strconv"

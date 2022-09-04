@@ -1,9 +1,9 @@
 package config
 
 import (
-	"echo_sample/util"
 	"flag"
 	"fmt"
+	"godok/util"
 	"log"
 	"os"
 

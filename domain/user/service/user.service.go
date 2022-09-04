@@ -3,49 +3,40 @@ package service
 import (
 	"context"
 	"database/sql"
-	"echo_sample/domain/user/dto"
-	userdto "echo_sample/domain/user/dto"
-	e "echo_sample/error"
-	"echo_sample/middleware"
+	"godok/domain/user/dto"
+	userdto "godok/domain/user/dto"
+	"godok/middleware"
+	eu "godok/util/errorutil"
 
 	"github.com/pkg/errors"
 )
 
 type UserService struct{}
 
-func (receiver *UserService) GetUserInfo(ctx context.Context, userId int) (user dto.UserInfo, err error) {
-	user, err = dao.GetUserInfo(ctx, userId)
+func (receiver *UserService) GetUserInfo(ctx context.Context, userId int) (dto.UserInfo, error) {
+	user, err := dao.GetUserInfo(ctx, userId)
 	if err != nil {
-		return dto.UserInfo{}, err
+		return user, err
 	}
 	return user, nil
 }
 
-func (receiver *UserService) CreateUserInfo(c context.Context, req dto.UserInfoRequest) (ret dto.UserTokens, err error) {
+func (receiver *UserService) CreateUserInfo(c context.Context, req dto.UserInfoRequest) (dto.UserTokens, error) {
+	ok, err := CheckNicknameDuplicated(c, req.Nickname)
+	if err != nil || !ok {
+		return dto.UserTokens{}, err
+	}
 
-	existNickname, err := dao.CheckNickname(c, req.Nickname)
-	if err != nil && err != sql.ErrNoRows {
-		err = errors.New(err.Error())
-		return
-	}
-	if err != sql.ErrNoRows || existNickname.Valid {
-		err = errors.New("nickname duplicated")
-		return
-	}
-	existEmail, err := dao.CheckEmail(c, req.Nickname)
-	if err != nil && err != sql.ErrNoRows {
-		err = errors.New(err.Error())
-		return
-	}
-	if err != sql.ErrNoRows || existEmail.Valid {
-		err = errors.New("email duplicated")
-		return
+	ok, err = CheckEmailDuplicated(c, req.Email)
+	if err != nil || !ok {
+		return dto.UserTokens{}, err
 	}
 
 	userInfo, err := dao.CreateUserInfo(c, req.ToDtoUserInfo())
 	if err != nil {
-		return
+		return dto.UserTokens{}, err
 	}
+
 	accessToken, err := middleware.CreateToken(int64(userInfo.UserID), middleware.TokenValidationMinutes)
 	refreshToken, err := middleware.CreateToken(int64(userInfo.UserID), middleware.RefreshValidationMinutes)
 
@@ -53,18 +44,18 @@ func (receiver *UserService) CreateUserInfo(c context.Context, req dto.UserInfoR
 	nickname := userInfo.Nickname
 	email := userInfo.Email
 
-	ret = dto.UserTokens{
+	ret := dto.UserTokens{
 		Success:      true,
 		UserID:       sql.NullInt64{Int64: userID, Valid: userID != 0},
 		AccessToken:  sql.NullString{String: accessToken, Valid: accessToken != ""},
 		RefreshToken: sql.NullString{String: refreshToken, Valid: refreshToken != ""},
 		ExistUserInfo: userdto.ExistUser{
-			UserID:   userInfo.UserID,
+			UserID:   userID,
 			Nickname: nickname,
 			Email:    email,
 		},
 	}
-	return
+	return ret, nil
 }
 
 func (receiver *UserService) SignIn(ctx context.Context, req dto.UserSignInRequest) (dto.UserTokens, error) {
@@ -74,7 +65,7 @@ func (receiver *UserService) SignIn(ctx context.Context, req dto.UserSignInReque
 	}
 
 	if userInfo.UserID == 0 {
-		return dto.UserTokens{}, e.ErrUnauthorized
+		return dto.UserTokens{}, eu.New().WithCustomCode("UnAuthorized")
 	}
 
 	accessToken, err := middleware.CreateToken(int64(userInfo.UserID), middleware.TokenValidationMinutes)
@@ -86,11 +77,33 @@ func (receiver *UserService) SignIn(ctx context.Context, req dto.UserSignInReque
 		AccessToken:  sql.NullString{String: accessToken, Valid: accessToken != ""},
 		RefreshToken: sql.NullString{String: refreshToken, Valid: refreshToken != ""},
 		ExistUserInfo: userdto.ExistUser{
-			UserID:   userInfo.UserID,
+			UserID:   int64(userInfo.UserID),
 			Nickname: userInfo.Nickname,
 			Email:    userInfo.Email,
 		},
 	}
 
 	return ret, nil
+}
+
+func CheckNicknameDuplicated(c context.Context, nickname string) (bool, error) {
+	users, err := dao.GetUserInfoByRequest(c, dto.UserInfoRequest{Nickname: nickname})
+	if err != nil {
+		return true, err
+	}
+	if len(users) != 0 {
+		return true, eu.New().WithCustomCode("nickname duplicated")
+	}
+	return false, nil
+}
+
+func CheckEmailDuplicated(c context.Context, email string) (bool, error) {
+	users, err := dao.GetUserInfoByRequest(c, dto.UserInfoRequest{Email: email})
+	if err != nil {
+		return true, err
+	}
+	if len(users) != 0 {
+		return true, eu.New().WithCustomCode("email duplicated")
+	}
+	return false, nil
 }

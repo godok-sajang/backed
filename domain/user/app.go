@@ -1,7 +1,7 @@
 package user
 
 import (
-	"echo_sample/domain/user/router"
+	"godok/domain/user/router"
 
 	"github.com/labstack/echo/v4"
 )

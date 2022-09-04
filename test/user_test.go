@@ -2,13 +2,13 @@ package test
 
 // import (
 // 	"bytes"
-// 	"echo_sample/config"
-// 	"echo_sample/domain/user/dto"
-// 	userdto "echo_sample/domain/user/dto"
-// 	"echo_sample/domain/user/router"
-// 	userService "echo_sample/domain/user/service"
 // 	"encoding/json"
 // 	"fmt"
+// 	"godok/config"
+// 	"godok/domain/user/dto"
+// 	userdto "godok/domain/user/dto"
+// 	"godok/domain/user/router"
+// 	userService "godok/domain/user/service"
 // 	"strings"
 
 // 	"net/http"

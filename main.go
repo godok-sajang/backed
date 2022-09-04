@@ -1,12 +1,12 @@
 package main
 
 import (
-	"echo_sample/config"
-	"echo_sample/db"
-	"echo_sample/domain/user"
-	userService "echo_sample/domain/user/service"
-	"echo_sample/middleware"
-	"net/http"
+	"godok/config"
+	"godok/db"
+	"godok/domain/user"
+	userService "godok/domain/user/service"
+	"godok/middleware"
+	"godok/util/echoutil"
 
 	"github.com/labstack/echo/v4"
 	eMiddleware "github.com/labstack/echo/v4/middleware"
@@ -38,13 +38,12 @@ func InitWebServices() {
 	e.Use(eMiddleware.Logger())
 	e.Use(eMiddleware.Recover())
 
+	// Custom error handler
+	e.HTTPErrorHandler = echoutil.HTTPErrorHandler
+
 	// Service init
 	user.Init(e)
 
-	// Start server 
+	// Start server
 	e.Logger.Fatal(e.Start(":3000"))
-}
-
-func ping(c echo.Context) error {
-	return c.JSON(http.StatusOK, "ping")
 }

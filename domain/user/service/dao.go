@@ -1,7 +1,7 @@
 package service
 
 import (
-	"echo_sample/db"
+	"godok/db"
 )
 
 var dao *db.Queries

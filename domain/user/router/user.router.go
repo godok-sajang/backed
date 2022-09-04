@@ -1,17 +1,15 @@
 package router
 
 import (
-	"database/sql"
-	"fmt"
 	"net/http"
-	"strconv"
 
-	"echo_sample/domain/user/dto"
-	userdto "echo_sample/domain/user/dto"
-	user "echo_sample/domain/user/service"
+	"godok/domain/user/dto"
+	userdto "godok/domain/user/dto"
+	user "godok/domain/user/service"
+
+	eu "godok/util/errorutil"
 
 	"github.com/labstack/echo/v4"
-	"github.com/pkg/errors"
 )
 
 var (
@@ -23,65 +21,47 @@ func MappingUrl(app *echo.Echo) {
 	app.POST("/user/sign-in", UserSignIn)
 }
 
-func GetUserInfo(c echo.Context) error {
-	id := c.Param("id")
-	idInt, err := strconv.Atoi(id)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, err.Error())
-	}
-	user, err := userService.GetUserInfo(c.Request().Context(), idInt)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return c.JSON(http.StatusNotFound, err.Error())
-		}
-		return c.JSON(http.StatusInternalServerError, err.Error())
-	}
-	return c.JSON(http.StatusOK, user)
-}
-
 func UserSignUp(c echo.Context) error {
 	var req dto.UserInfoRequest
-	err := c.Bind(&req)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, err)
+	if err := c.Bind(&req); err != nil {
+		return eu.New().WithHttpCode(http.StatusBadRequest).WithMessage(err)
 	}
 
 	if !req.ValidateNickname() {
-		return c.JSON(http.StatusBadRequest, "invalid nickname")
+		return eu.New().WithHttpCode(http.StatusBadRequest).WithMessage("invalid nickname")
 	}
 
 	if !req.ValidateEmail() {
-		return c.JSON(http.StatusBadRequest, "invalid email")
+		return eu.New().WithHttpCode(http.StatusBadRequest).WithMessage("invalid email")
 	}
 
 	if !req.ValidatePassword() {
-		return c.JSON(http.StatusBadRequest, "invalid password")
+		return eu.New().WithHttpCode(http.StatusBadRequest).WithMessage("invalid password")
 	}
 
 	if req.ValidateBirth() != nil {
-		return c.JSON(http.StatusBadRequest, "invalid Birth")
+		return eu.New().WithHttpCode(http.StatusBadRequest).WithMessage("invalid birth")
 	}
 
 	token, err := userService.CreateUserInfo(c.Request().Context(), req)
 	if err != nil {
-		fmt.Printf("%+v", err)
-		return c.JSON(http.StatusInternalServerError, err)
+		return err
 	}
 
 	return c.JSON(http.StatusOK, token)
 }
 
-func UserSignIn(c echo.Context) (err error) {
+func UserSignIn(c echo.Context) error {
 	var u userdto.UserSignInRequest
-	if err = c.Bind(u); err != nil {
-		return c.JSON(http.StatusBadRequest, err.Error())
+	if err := c.Bind(u); err != nil {
+		return eu.New().WithHttpCode(http.StatusBadRequest).WithMessage(err)
 	}
 	token, err := userService.SignIn(c.Request().Context(), userdto.UserSignInRequest{
 		Email:    u.Email,
 		Password: u.Password,
 	})
 	if err != nil {
-		return c.JSON(http.StatusUnauthorized, errors.Cause(err))
+		return err
 	}
 	return c.JSON(http.StatusOK, token)
 }
