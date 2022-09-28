@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"godok/util"
@@ -16,13 +15,6 @@ type CheckAuthResponse struct {
 	UserID   int    `json:"userId" bson:"user_id"`
 	Nickname string `json:"nickname" bson:"nickname"`
 	Email    string `json:"email" bson:"email"`
-}
-
-type UserRepo interface {
-	CheckAuth(context.Context, UserSignInRequest) (CheckAuthResponse, error)
-	GetUserInfoByRequest(context.Context, UserInfoRequest) (UserInfo, error)
-	CreateUserInfo(context.Context, UserInfo) (UserInfo, error)
-	GetUserInfo(context.Context, int) (UserInfo, error)
 }
 
 type UserInfoRequest struct {

@@ -7,6 +7,7 @@ import (
 	userService "godok/domain/user/service"
 	"godok/middleware"
 	"godok/util/echoutil"
+	"net/http"
 
 	"github.com/labstack/echo/v4"
 	eMiddleware "github.com/labstack/echo/v4/middleware"
@@ -43,6 +44,9 @@ func InitWebServices() {
 
 	// Service init
 	user.Init(e)
+	e.GET("/", func(c echo.Context) error {
+		return c.JSON(http.StatusOK, "hello")
+	})
 
 	// Start server
 	e.Logger.Fatal(e.Start(":3000"))

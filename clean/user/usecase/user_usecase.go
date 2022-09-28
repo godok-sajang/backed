@@ -11,12 +11,19 @@ import (
 	"time"
 )
 
-type UserService struct {
+type userUsecase struct {
 	userRepo       domain.UserRepo
 	contextTimeout time.Duration
 }
 
-func (us *UserService) CreateUserInfo(c context.Context, req domain.UserInfoRequest) (dto.UserTokens, error) {
+func New(c context.Context, userRepo domain.UserRepo, contextTimeout time.Duration) domain.UserUsecase {
+	return &userUsecase{
+		userRepo:       userRepo,
+		contextTimeout: contextTimeout,
+	}
+}
+
+func (us *userUsecase) CreateUserInfo(c context.Context, req domain.UserInfoRequest) (dto.UserTokens, error) {
 	ok, err := CheckNicknameDuplicated(c, us, req.Nickname)
 	if err != nil || !ok {
 		return dto.UserTokens{}, err
@@ -53,7 +60,7 @@ func (us *UserService) CreateUserInfo(c context.Context, req domain.UserInfoRequ
 	return ret, nil
 }
 
-func (us *UserService) SignIn(ctx context.Context, req domain.UserSignInRequest) (dto.UserTokens, error) {
+func (us *userUsecase) SignIn(ctx context.Context, req domain.UserSignInRequest) (dto.UserTokens, error) {
 	userInfo, err := us.userRepo.GetUserInfoByRequest(ctx, domain.UserInfoRequest{
 		Email:    req.Email,
 		Password: req.Password,
@@ -84,7 +91,7 @@ func (us *UserService) SignIn(ctx context.Context, req domain.UserSignInRequest)
 	return ret, nil
 }
 
-func CheckNicknameDuplicated(c context.Context, us *UserService, nickname string) (bool, error) {
+func CheckNicknameDuplicated(c context.Context, us *userUsecase, nickname string) (bool, error) {
 	users, err := us.userRepo.GetUserInfoByRequest(c, domain.UserInfoRequest{Nickname: nickname})
 	if err != nil {
 		return true, err
@@ -95,7 +102,7 @@ func CheckNicknameDuplicated(c context.Context, us *UserService, nickname string
 	return false, nil
 }
 
-func CheckEmailDuplicated(c context.Context, us *UserService, email string) (bool, error) {
+func CheckEmailDuplicated(c context.Context, us *userUsecase, email string) (bool, error) {
 	users, err := us.userRepo.GetUserInfoByRequest(c, domain.UserInfoRequest{Email: email})
 	if err != nil {
 		return true, err
