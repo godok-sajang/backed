@@ -1,0 +1,11 @@
+listen : :3000
+env: local
+
+postgresql:
+  host: godoksajang
+  port: 5432
+  user: postgres
+  password: godok123
+  dbName: godok
+  options:
+    connections: 300
